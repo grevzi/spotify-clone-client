@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useSession } from "next-auth/react";
 import defaultProfile from "../public/default-profile.svg";
-import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { getRandomIntBetween } from "../lib/utils";
+import { useRecoilValue } from "recoil";
+import { selectedAlbumState } from "../atoms/album-atom";
+import Songs from "./Songs";
 
 const colors = [
   "from-indigo-500",
@@ -17,16 +19,18 @@ const colors = [
 
 const Main = () => {
   const { data: session } = useSession();
-  console.log({ session });
-
   const [color, setColor] = useState<string>("");
+  const selectedAlbum = useRecoilValue(selectedAlbumState);
 
   useEffect(() => {
-    if (color) return;
     setColor(colors[getRandomIntBetween(0, 6)]);
-  }, [color]);
+  }, []);
   return (
-    <div className={"flex-grow text-white"}>
+    <div
+      className={
+        "flex-grow text-white h-screen overflow-y-scroll scrollbar-hide"
+      }
+    >
       <header className={"absolute top-5 right-8 "}>
         <div
           className={
@@ -41,20 +45,34 @@ const Main = () => {
             className={"rounded-full block"}
           />
           <p>{session?.user?.name ?? "Guest"}</p>
-          <ChevronDownIcon className={"w-5 h-5"} />
         </div>
       </header>
 
-      <section
-        className={`flex items-end space-x-7 bg-gradient-to-b to-black h-80 p-8 ${color}`}
-      >
-        <Image
-          src={session?.user?.image ?? defaultProfile}
-          alt="user image"
-          width={"40"}
-          height={"40"}
-          className={"rounded-full block"}
-        />
+      <section className={`flex flex-col`}>
+        {selectedAlbum?._id && (
+          <>
+            <div
+              className={`flex h-80 items-end space-x-7 p-8 bg-gradient-to-b to-black ${color}`}
+            >
+              <div className={"w-44 h-44 relative"}>
+                <Image
+                  src={selectedAlbum.picture ?? defaultProfile}
+                  alt="user image"
+                  layout="fill"
+                  objectFit="cover"
+                  className={"shadow-2xl"}
+                />
+              </div>
+              <div>
+                <p>ALBUM:</p>
+                <p className={"text-2xl md:text-3xl xl:text-5xl font-bold"}>
+                  {selectedAlbum.name}
+                </p>
+              </div>
+            </div>
+            <Songs tracks={selectedAlbum.tracks} />
+          </>
+        )}
       </section>
     </div>
   );

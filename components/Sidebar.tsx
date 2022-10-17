@@ -11,27 +11,27 @@ import {
 } from "@heroicons/react/24/outline";
 import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
-import { useSpotify } from "../hooks/useSpotify";
+import { AlbumService } from "../services/AlbumService";
+import { Album } from "../types/album";
+import { useSetRecoilState } from "recoil";
+import { selectedAlbumState } from "../atoms/album-atom";
 
 const Sidebar = () => {
-  const spotifyApi = useSpotify();
   const { data: session } = useSession();
-  const [playlists, setPlaylists] = useState([]);
+  const [album, setAlbum] = useState<Album[]>([]);
+  const setSelectedAlbum = useSetRecoilState(selectedAlbumState);
 
   useEffect(() => {
-    console.log("!!", spotifyApi);
-    if (spotifyApi.getAccessToken()) {
-      spotifyApi.getUserPlaylists().then((res) => {
-        console.log({ res });
-        // @ts-ignore
-        setPlaylists(res.body.items);
-      });
-    }
-  }, [session, spotifyApi]);
+    const getData = async () => {
+      const res = await AlbumService.getAll({ limit: 10, offset: 0 });
+      return res.data;
+    };
+    getData().then((data) => setAlbum(data));
+  }, []);
   return (
     <div
       className={
-        "p-5 text-gray-500 text-sm border-r border-gray-900 overflow-y-auto h-screen scrollbar-hide"
+        "p-5 text-gray-500 text-xs border-r border-gray-900 overflow-y-auto h-screen scrollbar-hide lg:text-sm sm:max-w-[12rem] lg:max-w-[15rem] hidden md:inline-flex pb-36"
       }
     >
       <div className={"space-y-4"}>
@@ -111,8 +111,15 @@ const Sidebar = () => {
         )}
         <hr className={"border-gray-900 border-t-[0.1px]"} />
 
-        {/*Play lists*/}
-        <p className={"cursor-pointer hover:text-white"}>Playlist name</p>
+        {album.map((album) => (
+          <p
+            key={album._id}
+            onClick={() => setSelectedAlbum(album)}
+            className={"cursor-pointer hover:text-white"}
+          >
+            {album.name}
+          </p>
+        ))}
       </div>
     </div>
   );

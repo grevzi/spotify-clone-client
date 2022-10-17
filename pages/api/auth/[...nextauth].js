@@ -1,36 +1,23 @@
 import NextAuth from "next-auth";
-import SpotifyProvider from "next-auth/providers/spotify";
-import spotifyApi, { LOGIN_URL } from "../../../lib/spotify";
-
-async function refreshAccessToken(token) {
-  console.log("refreshAccessToken", token);
-  try {
-    spotifyApi.setAccessToken(token.accessToken);
-    spotifyApi.setRefreshToken(token.refreshToken);
-
-    const { body: refreshedToken } = await spotifyApi.refreshAccessToken();
-
-    return {
-      ...token,
-      accessToken: refreshedToken.access_token,
-      accessTokenExpires: Date.now() + refreshedToken.expires_in * 1000,
-      refreshToken: refreshedToken.refresh_token ?? token.refreshToken,
-    };
-  } catch (e) {
-    console.log(e);
-    return {
-      ...token,
-      error: "RefreshAccessTokenError",
-    };
-  }
-}
+import CredentialsProvider from "next-auth/providers/credentials";
+import { AuthService } from "../../../services/AuthService";
 
 export const authOptions = {
   providers: [
-    SpotifyProvider({
-      clientId: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID,
-      clientSecret: process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_SECRET,
-      authorization: LOGIN_URL,
+    CredentialsProvider({
+      async authorize(credentials, req) {
+        const data = {
+          email: credentials?.email,
+          password: credentials?.password,
+        };
+        const res = await AuthService.login(data);
+        const user = res.data;
+
+        if (res.status === 201 && user) {
+          return user;
+        }
+        return null;
+      },
     }),
   ],
   secret: process.env.JWT_SECRET,
@@ -43,25 +30,19 @@ export const authOptions = {
       if (account && user) {
         return {
           ...token,
-          accessToken: account.access_token,
-          accessTokenExpires: account.expires_at * 1000,
-          refreshToken: account.refresh_token,
-          username: account.providerAccountId,
+          accessToken: user.access_token,
+          accessTokenExpires: Date.now() * 1000,
         };
       }
 
       if (Date.now() < token.accessTokenExpires) {
         return token;
       }
-
-      return await refreshAccessToken(token);
     },
   },
   async session({ session, token }) {
     console.log("@@@", { token });
     session.user.accessToken = token.accessToken;
-    session.user.refreshToken = token.refreshToken;
-    session.user.username = token.username;
 
     return session;
   },
